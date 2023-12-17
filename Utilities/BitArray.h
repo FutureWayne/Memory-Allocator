@@ -23,7 +23,7 @@ class BitArray
 public:
     BitArray(size_t i_numBits, bool i_bInitToZero);
     ~BitArray();
-    //static BitArray * Create(size_t i_numBits, bool i_startClear = true, HeapAllocator * i_pAllocator);
+    //static BitArray * Create(size_t i_numBits, bool i_startClear = true, HeapManager * i_pAllocator);
 
     void ClearAll(void) const;
 

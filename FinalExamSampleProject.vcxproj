@@ -144,11 +144,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Allocators.cpp" />
+    <ClCompile Include="FixedSizeAllocator\FixedSizeAllocator.cpp" />
+    <ClCompile Include="HeapManager\HeapManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MemorySystem.cpp" />
     <ClCompile Include="Utilities\BitArray.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FixedSizeAllocator\FixedSizeAllocator.h" />
+    <ClInclude Include="HeapManager\HeapManager.h" />
     <ClInclude Include="MemorySystem.h" />
     <ClInclude Include="Utilities\BitArray.h" />
   </ItemGroup>
