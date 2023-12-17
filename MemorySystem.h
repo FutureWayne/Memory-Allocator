@@ -9,9 +9,10 @@ struct FSAInitData
    size_t blockNum;
 };
 
-extern HeapManager* g_pHeapManager;
-extern FixedSizeAllocator** g_pFixedSizeAllocators;
 extern const unsigned int g_FixedSizeAllocatorsCount;
+extern HeapManager* g_pHeapManager;
+extern FixedSizeAllocator* g_pFixedSizeAllocators[5];
+
 
 // InitializeMemorySystem - initialize your memory system including your HeapManager and some FixedSizeAllocators
 bool InitializeMemorySystem(void * i_pHeapMemory, size_t i_sizeHeapMemory, unsigned int i_OptionalNumDescriptors);

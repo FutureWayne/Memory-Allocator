@@ -8,14 +8,14 @@ FSAInitData g_FixedSizeAllocatorsInitData[] = {
 	{ 1024, 100 },
  };
 
+const unsigned int g_FixedSizeAllocatorsCount = 5;
 HeapManager* g_pHeapManager = nullptr;
-FixedSizeAllocator** g_pFixedSizeAllocators = nullptr;
-unsigned const int g_FixedSizeAllocatorsCount = sizeof(g_FixedSizeAllocatorsInitData) / sizeof(FSAInitData);
+FixedSizeAllocator* g_pFixedSizeAllocators[5] = {nullptr};
+
 
 bool InitializeMemorySystem(void * i_pHeapMemory, size_t i_sizeHeapMemory, unsigned int i_OptionalNumDescriptors)
 {
 	// Create FixedSizeAllocators
-	g_pFixedSizeAllocators = new FixedSizeAllocator*[g_FixedSizeAllocatorsCount];
 	for (unsigned int i = 0; i < g_FixedSizeAllocatorsCount; i++)
 	{
 		const size_t fixedSizeAllocatorSize = g_FixedSizeAllocatorsInitData[i].blockSize * g_FixedSizeAllocatorsInitData[i].blockNum;

@@ -7,7 +7,7 @@ BitArray::BitArray() = default;
 
 BitArray::~BitArray()
 {
-    delete[] m_pBits;
+    
 }
 
 bool BitArray::FindFirstSetBit(size_t& o_firstSetBitIndex) const
@@ -22,12 +22,18 @@ bool BitArray::FindFirstClearBit(size_t& o_firstClearBitIndex) const
 
 void BitArray::ClearAll(void) const
 {
-    memset(m_pBits, 0, m_bitLength / 8);
+    for (size_t i = 0; i < m_elementCount; i++)
+    {
+        *FindElementPtr(i) = 0;
+    }
 }
 
 void BitArray::SetAll(void) const
 {
-    memset(m_pBits, 1, m_bitLength / 8);
+    for (size_t i = 0; i < m_elementCount; i++)
+    {
+        *FindElementPtr(i) = _WIN32 ? ~0UL : ~0ULL;
+    }
 }
 
 bool BitArray::AreAllBitsClear(void) const 
@@ -50,32 +56,37 @@ bool BitArray::AreAllBitsSet(void) const
     return true;
 }
 
-inline bool BitArray::IsBitSet(size_t i_bitNumber) const 
+bool BitArray::IsBitSet(size_t i_bitNumber) const 
 {
     const size_t byteIndex = i_bitNumber / bitsPerElement;
     const size_t bitIndex = i_bitNumber % bitsPerElement;
     return (m_pBits[byteIndex] & (static_cast<t_BitData>(1) << bitIndex)) != 0;
 }
 
-inline bool BitArray::IsBitClear(size_t i_bitNumber) const 
+bool BitArray::IsBitClear(size_t i_bitNumber) const 
 {
     const size_t byteIndex = i_bitNumber / bitsPerElement;
     const size_t bitIndex = i_bitNumber % bitsPerElement;
     return (m_pBits[byteIndex] & (static_cast<t_BitData>(1) << bitIndex)) == 0;
 }
 
+t_BitData* BitArray::FindElementPtr(size_t idx) const
+{
+    return &m_pBits[idx];
+}
+
 void BitArray::SetBit(size_t i_bitNumber) const
 {
-    const size_t byteIndex = i_bitNumber / bitsPerElement;
+    const size_t elementIndex = i_bitNumber / bitsPerElement;
     const size_t bitIndex = i_bitNumber % bitsPerElement;
-    m_pBits[byteIndex] |= (static_cast<t_BitData>(1) << bitIndex);
+    m_pBits[elementIndex] |= (static_cast<t_BitData>(1) << bitIndex);
 }
 
 void BitArray::ClearBit(size_t i_bitNumber) const
 {
-    const size_t byteIndex = i_bitNumber / bitsPerElement;
+    const size_t elementIndex = i_bitNumber / bitsPerElement;
     const size_t bitIndex = i_bitNumber % bitsPerElement;
-    m_pBits[byteIndex] &= ~(static_cast<t_BitData>(1) << bitIndex);
+    m_pBits[elementIndex] &= ~(static_cast<t_BitData>(1) << bitIndex);
 }
 
 bool BitArray::operator[](size_t i_bitIndex) const

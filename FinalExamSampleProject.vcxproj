@@ -155,6 +155,7 @@
     <ClInclude Include="HeapManager\HeapManager.h" />
     <ClInclude Include="MemorySystem.h" />
     <ClInclude Include="Utilities\BitArray.h" />
+    <ClInclude Include="Utilities\PointerMath.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

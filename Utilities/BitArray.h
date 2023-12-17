@@ -1,12 +1,14 @@
 ﻿#pragma once
 #include <cstdint>
-#include <cstring>
+#include <iostream>
 
-#if _WIN32 // For 32-bit Windows platforms
+#include "PointerMath.h"
+
+#if _WIN32
 typedef uint32_t t_BitData;
-#else // For 64-bit platforms and non-Windows platforms
+#else
 typedef uint64_t t_BitData;
-#endif
+#endif // WIN32
 
 /**
  * @class BitArray
@@ -22,11 +24,11 @@ class BitArray
 public:
     BitArray();
     ~BitArray();
-
-    t_BitData* m_pBits = nullptr;
-    size_t bitsPerElement = sizeof(t_BitData) * 8;
-    size_t m_bitLength = 0;
-    size_t m_elementCount = 0;
+    
+    size_t bitsPerElement;
+    size_t m_bitLength;
+    size_t m_elementCount;
+    t_BitData* m_pBits;
 
     void ClearAll(void) const;
 
@@ -36,10 +38,12 @@ public:
 
     bool AreAllBitsSet(void) const;
     
-    inline bool IsBitSet(size_t i_bitNumber) const;
+    bool IsBitSet(size_t i_bitNumber) const;
 
-    inline bool IsBitClear(size_t i_bitNumber) const;
+    bool IsBitClear(size_t i_bitNumber) const;
     
+    t_BitData* FindElementPtr(size_t idx) const;
+
     void SetBit(size_t i_bitNumber) const;
 
     void ClearBit(size_t i_bitNumber) const;
@@ -57,19 +61,22 @@ private:
 inline BitArray* CreateBitArray(void* baseAddr, size_t i_numBits, bool i_bInitToZero)
 {
     BitArray* pBitArray = static_cast<BitArray*>(baseAddr);
-    
-    pBitArray->m_bitLength = i_numBits;
 
-    // Find the number of elements needed to store the bits
-    pBitArray->m_elementCount = i_numBits + pBitArray->bitsPerElement - 1 / pBitArray->bitsPerElement;
+    // Initialize BitArray members
+    pBitArray->m_bitLength = i_numBits;
+    pBitArray->bitsPerElement = sizeof(t_BitData) * 8;
+    pBitArray->m_elementCount = (i_numBits + pBitArray->bitsPerElement - 1) / pBitArray->bitsPerElement;
     
-    // Allocate the memory for the bits
-    for (size_t i = 0; i < pBitArray->m_elementCount; ++i) {
-        pBitArray->m_pBits[i] = i_bInitToZero ? 0 : ~static_cast<t_BitData>(0);
+    const auto newAddress = PointerAdd(pBitArray, sizeof(BitArray));
+    pBitArray->m_pBits = reinterpret_cast<t_BitData*>(newAddress);
+    
+    for (size_t i = 0; i < pBitArray->m_elementCount; i++)
+    {
+        pBitArray->m_pBits[i] = i_bInitToZero ? 0 : ~0;
     }
+    
+
+    t_BitData data = pBitArray->m_pBits[3];
     
     return pBitArray;
 }
-
-
-

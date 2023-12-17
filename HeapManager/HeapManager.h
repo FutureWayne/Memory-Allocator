@@ -17,6 +17,11 @@ struct MemoryBlock
     public:
         HeapManager(void* pHeapMemory, size_t heapSize, unsigned int numDescriptors);
         ~HeapManager();
+
+        size_t m_heapSize;
+        void* m_pHeapBaseAddress;
+        MemoryBlock* m_pFreeMemoryBlockList; // Linked list of free blocks
+        MemoryBlock* m_pOutstandingAllocationList; // Linked list of allocated blocks
         
         void ShowFreeBlocks() const;
         void ShowOutstandingAllocations() const;
@@ -31,11 +36,8 @@ struct MemoryBlock
 
     private:
         std::pair<MemoryBlock*, MemoryBlock*> findFreeBlock(size_t size);
-        
-        size_t m_heapSize;
-        void* m_pHeapBaseAddress;
-        MemoryBlock* m_pFreeMemoryBlockList; // Linked list of free blocks
-        MemoryBlock* m_pOutstandingAllocationList; // Linked list of allocated blocks
+
+        MemoryBlock* createNewBlock(void* pBaseAddress, size_t size, MemoryBlock* pNextBlock);
     };
 
     HeapManager* CreateHeapManager(void* pHeapMemory, size_t heapSize, unsigned int numDescriptors);
