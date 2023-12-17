@@ -3,13 +3,7 @@
 #include <cstring>
 #include <intrin0.inl.h>
 
-BitArray::BitArray(size_t i_numBits, bool i_bInitToZero) {
-    m_pBits = new t_BitData[i_numBits / bitsPerElement];
-    
-    memset(m_pBits, i_bInitToZero ? 0 : 1, i_numBits / bitsPerElement);
-
-    m_numBytes = i_numBits / 8;
-}
+BitArray::BitArray() = default;
 
 BitArray::~BitArray()
 {
@@ -28,17 +22,17 @@ bool BitArray::FindFirstClearBit(size_t& o_firstClearBitIndex) const
 
 void BitArray::ClearAll(void) const
 {
-    memset(m_pBits, 0, m_numBytes);
+    memset(m_pBits, 0, m_bitLength / 8);
 }
 
 void BitArray::SetAll(void) const
 {
-    memset(m_pBits, 1, m_numBytes);
+    memset(m_pBits, 1, m_bitLength / 8);
 }
 
 bool BitArray::AreAllBitsClear(void) const 
 {
-    for (size_t i = 0; i < m_numBytes; ++i) {
+    for (size_t i = 0; i < m_elementCount; ++i) {
         if (m_pBits[i] != 0) {
             return false;
         }
@@ -48,7 +42,7 @@ bool BitArray::AreAllBitsClear(void) const
 
 bool BitArray::AreAllBitsSet(void) const 
 {
-    for (size_t i = 0; i < m_numBytes; ++i) {
+    for (size_t i = 0; i < m_elementCount; ++i) {
         if (m_pBits[i] != ~static_cast<t_BitData>(0)) {
             return false;
         }
@@ -106,26 +100,26 @@ bool BitArray::operator[](size_t i_bitIndex) const
  */
 bool BitArray::findBit(bool findSetBit, size_t& o_bitIndex) const
 {
-    size_t byteIndex = 0;
+    size_t elementIndex = 0;
     const t_BitData targetValue = findSetBit ? 0 : ~static_cast<t_BitData>(0);
 
-    while ((m_pBits[byteIndex] == targetValue) && (byteIndex < m_numBytes)) {
-        byteIndex++;
+    while ((m_pBits[elementIndex] == targetValue) && (elementIndex < m_elementCount)) {
+        elementIndex++;
     }
 
-    if (byteIndex == m_numBytes) {
+    if (elementIndex == m_elementCount) {
         return false;
     }
 
-    t_BitData Bits = findSetBit ? m_pBits[byteIndex] : ~m_pBits[byteIndex];
+    t_BitData Bits = findSetBit ? m_pBits[elementIndex] : ~m_pBits[elementIndex];
     unsigned long bitIndex;
 
-#if defined(_WIN64)
-    _BitScanForward64(&bitIndex, Bits);
-#else
+#if WIN32
     _BitScanForward(&bitIndex, Bits);
+#else
+    _BitScanForward64(&bitIndex, Bits);
 #endif
 
-    o_bitIndex = byteIndex * (sizeof(t_BitData) * 8) + bitIndex;
+    o_bitIndex = elementIndex * (sizeof(t_BitData) * 8) + bitIndex;
     return true;
 }

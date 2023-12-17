@@ -1,6 +1,12 @@
 ﻿#pragma once
 #include <cstdint>
+#include <cstring>
 
+#if _WIN32 // For 32-bit Windows platforms
+typedef uint32_t t_BitData;
+#else // For 64-bit platforms and non-Windows platforms
+typedef uint64_t t_BitData;
+#endif
 
 /**
  * @class BitArray
@@ -13,16 +19,14 @@
  */
 class BitArray
 {
-#if defined(_WIN64) // For 64-bit Windows platforms
-    typedef uint64_t t_BitData;
-#else // For 32-bit platforms and non-Windows platforms
-    typedef uint32_t t_BitData;
-#endif
-
 public:
-    BitArray(size_t i_numBits, bool i_bInitToZero);
+    BitArray();
     ~BitArray();
-    //static BitArray * Create(size_t i_numBits, bool i_startClear = true, HeapManager * i_pAllocator);
+
+    t_BitData* m_pBits = nullptr;
+    size_t bitsPerElement = sizeof(t_BitData) * 8;
+    size_t m_bitLength = 0;
+    size_t m_elementCount = 0;
 
     void ClearAll(void) const;
 
@@ -47,13 +51,25 @@ public:
     bool operator[](size_t i_bitIndex) const;
 
 private:
-    t_BitData* m_pBits;
-    size_t bitsPerElement = sizeof(t_BitData) * 8;
-    size_t m_numBytes;
-
     bool findBit(bool findSetBit, size_t& o_bitIndex) const;
 };
 
+inline BitArray* CreateBitArray(void* baseAddr, size_t i_numBits, bool i_bInitToZero)
+{
+    BitArray* pBitArray = static_cast<BitArray*>(baseAddr);
+    
+    pBitArray->m_bitLength = i_numBits;
+
+    // Find the number of elements needed to store the bits
+    pBitArray->m_elementCount = i_numBits + pBitArray->bitsPerElement - 1 / pBitArray->bitsPerElement;
+    
+    // Allocate the memory for the bits
+    for (size_t i = 0; i < pBitArray->m_elementCount; ++i) {
+        pBitArray->m_pBits[i] = i_bInitToZero ? 0 : ~static_cast<t_BitData>(0);
+    }
+    
+    return pBitArray;
+}
 
 
 

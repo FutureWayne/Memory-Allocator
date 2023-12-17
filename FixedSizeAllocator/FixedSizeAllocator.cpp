@@ -2,14 +2,15 @@
 
 FixedSizeAllocator* CreateFixedSizeAllocator(size_t blockSize, size_t blockNum, void* heapBaseAddr)
 {
-    // Calculate the required size for the BitArray
-    const size_t bitArraySize = blockNum;
+    FixedSizeAllocator* pFixedSizeAllocator = static_cast<FixedSizeAllocator*>(heapBaseAddr);
 
-    // Create and initialize the BitArray
-    BitArray* bitArray = new BitArray(bitArraySize, true);
+    pFixedSizeAllocator->m_blockSize = blockSize;
+    pFixedSizeAllocator->m_blockNum = blockNum;
+    pFixedSizeAllocator->m_freeBlockNum = blockNum;
+    pFixedSizeAllocator->m_pBitArray = CreateBitArray(&pFixedSizeAllocator->m_pBitArray, blockNum, true);
+    pFixedSizeAllocator->m_bitArraySize = reinterpret_cast<uintptr_t>(
 
-    // Create the FixedSizeAllocator
-    return new FixedSizeAllocator(bitArray, blockNum, blockNum, blockSize, bitArraySize, heapBaseAddr);
+    return pFixedSizeAllocator;
 }
 
 
@@ -18,7 +19,7 @@ FixedSizeAllocator::FixedSizeAllocator(
     size_t blockNum, size_t freeBlockNum, 
     size_t blockSize, size_t bitArraySize,
     void* blockBaseAddr)
-    : m_bitArray(bitArray), m_blockNum(blockNum), m_freeBlockNum(freeBlockNum),
+    : m_pBitArray(bitArray), m_blockNum(blockNum), m_freeBlockNum(freeBlockNum),
       m_blockSize(blockSize), m_bitArraySize(bitArraySize), m_blockBaseAddr(blockBaseAddr)
 {
     
@@ -42,7 +43,7 @@ bool FixedSizeAllocator::IsAllocated(const void* ptr) const
     }
 
     const size_t blockIndex = (static_cast<const char*>(ptr) - static_cast<const char*>(m_blockBaseAddr)) / m_blockSize;
-    return m_bitArray->IsBitSet(blockIndex);
+    return m_pBitArray->IsBitSet(blockIndex);
 }
 
 void* FixedSizeAllocator::Alloc()
@@ -52,8 +53,8 @@ void* FixedSizeAllocator::Alloc()
     }
 
     for (size_t i = 0; i < m_blockNum; ++i) {
-        if (!m_bitArray->IsBitSet(i)) {
-            m_bitArray->SetBit(i);
+        if (!m_pBitArray->IsBitSet(i)) {
+            m_pBitArray->SetBit(i);
             m_freeBlockNum--;
             return static_cast<char*>(m_blockBaseAddr) + i * m_blockSize;
         }
@@ -69,7 +70,7 @@ bool FixedSizeAllocator::Free(void* ptr)
     }
 
     const size_t blockIndex = (static_cast<char*>(ptr) - static_cast<char*>(m_blockBaseAddr)) / m_blockSize;
-    m_bitArray->ClearBit(blockIndex);
+    m_pBitArray->ClearBit(blockIndex);
     m_freeBlockNum++;
     return true;
 }
@@ -77,8 +78,8 @@ bool FixedSizeAllocator::Free(void* ptr)
 void FixedSizeAllocator::Destroy() const
 {
     // Cleanup
-    m_bitArray->ClearAll();
-    delete m_bitArray;
+    m_pBitArray->ClearAll();
+    delete m_pBitArray;
 }
 
 

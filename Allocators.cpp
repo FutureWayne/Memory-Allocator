@@ -11,7 +11,7 @@ void * __cdecl malloc(size_t i_size)
 	// Try to allocate memory from FixedSizeAllocators
 	for (unsigned int i = 0; i < g_FixedSizeAllocatorsCount; i++)
 	{
-		if (i_size <= g_pFixedSizeAllocators[i]->GetBlockSize())
+		if (i_size <= g_pFixedSizeAllocators[i]->m_blockSize)
 		{
 			void* ptr = g_pFixedSizeAllocators[i]->Alloc();
 			if (ptr != nullptr)

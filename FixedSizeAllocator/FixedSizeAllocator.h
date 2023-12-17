@@ -12,6 +12,13 @@ public:
         void* blockBaseAddr = nullptr);
     
     ~FixedSizeAllocator();
+
+    BitArray* m_pBitArray;
+    size_t m_blockNum;
+    size_t m_freeBlockNum;
+    size_t m_blockSize;
+    size_t m_bitArraySize;
+    void* m_blockBaseAddr;
     
     bool Contains(const void* ptr) const;
 
@@ -22,16 +29,6 @@ public:
     bool Free(void* ptr);
 
     void Destroy() const;
-
-    size_t GetBlockSize() const { return m_blockSize; }
-
-private:
-    BitArray* m_bitArray;
-    size_t m_blockNum;
-    size_t m_freeBlockNum;
-    size_t m_blockSize;
-    size_t m_bitArraySize;
-    void* m_blockBaseAddr;
 };
 
 FixedSizeAllocator* CreateFixedSizeAllocator(size_t blockSize, size_t blockNum, void* heapBaseAddr);

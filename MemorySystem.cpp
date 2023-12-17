@@ -1,5 +1,16 @@
 #include "MemorySystem.h"
 
+FSAInitData g_FixedSizeAllocatorsInitData[] = {
+	{ 16, 100 },
+	{ 32, 100 },
+	{ 96, 100 },
+	{ 256, 100 },
+	{ 1024, 100 },
+ };
+
+HeapManager* g_pHeapManager = nullptr;
+FixedSizeAllocator** g_pFixedSizeAllocators = nullptr;
+unsigned const int g_FixedSizeAllocatorsCount = sizeof(g_FixedSizeAllocatorsInitData) / sizeof(FSAInitData);
 
 bool InitializeMemorySystem(void * i_pHeapMemory, size_t i_sizeHeapMemory, unsigned int i_OptionalNumDescriptors)
 {
