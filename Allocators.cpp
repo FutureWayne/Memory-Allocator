@@ -3,45 +3,58 @@
 
 #include <stdio.h>
 
+#include "MemorySystem.h"
+
 
 void * __cdecl malloc(size_t i_size)
 {
-	// replace with calls to your HeapManager or FixedSizeAllocators
-	printf("malloc %zu\n", i_size);
-	return _aligned_malloc(i_size, 4);
+	// Try to allocate memory from FixedSizeAllocators
+	for (unsigned int i = 0; i < g_FixedSizeAllocatorsCount; i++)
+	{
+		if (i_size <= g_pFixedSizeAllocators[i]->GetBlockSize())
+		{
+			void* ptr = g_pFixedSizeAllocators[i]->Alloc();
+			if (ptr != nullptr)
+				return ptr;
+		}
+	}
+
+	// Too big for FixedSizeAllocators, try HeapManager
+	return g_pHeapManager->Alloc(i_size, 4);
 }
 
 void __cdecl free(void * i_ptr)
 {
-	// replace with calls to your HeapManager or FixedSizeAllocators
-	printf("free 0x%" PRIXPTR "\n", reinterpret_cast<uintptr_t>(i_ptr));
-	return _aligned_free(i_ptr);
+	// Try to free memory from FixedSizeAllocators
+	for (unsigned int i = 0; i < g_FixedSizeAllocatorsCount; i++)
+	{
+		if (g_pFixedSizeAllocators[i]->Contains(i_ptr))
+		{
+			g_pFixedSizeAllocators[i]->Free(i_ptr);
+			return;
+		}
+	}
+
+	// Try to free memory from HeapManager
+	g_pHeapManager->Free(i_ptr);
 }
 
 void * operator new(size_t i_size)
 {
-	// replace with calls to your HeapManager or FixedSizeAllocators
-	printf("new %zu\n", i_size);
-	return _aligned_malloc(i_size, 4);
+	return malloc(i_size);
 }
 
 void operator delete(void * i_ptr)
 {
-	// replace with calls to your HeapManager or FixedSizeAllocators
-	printf("delete 0x%" PRIXPTR "\n", reinterpret_cast<uintptr_t>(i_ptr));
-	return _aligned_free(i_ptr);
+	free(i_ptr);
 }
 
 void * operator new[](size_t i_size)
 {
-	// replace with calls to your HeapManager or FixedSizeAllocators
-	printf("new [] %zu\n", i_size);
-	return _aligned_malloc(i_size, 4);
+	return malloc(i_size);
 }
 
 void operator delete [](void * i_ptr)
 {
-	// replace with calls to your HeapManager or FixedSizeAllocators
-	printf("delete [] 0x%" PRIXPTR "\n", reinterpret_cast<uintptr_t>(i_ptr));
-	return _aligned_free(i_ptr);
+	free(i_ptr);
 }

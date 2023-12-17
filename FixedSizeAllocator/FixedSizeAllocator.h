@@ -23,6 +23,8 @@ public:
 
     void Destroy() const;
 
+    size_t GetBlockSize() const { return m_blockSize; }
+
 private:
     BitArray* m_bitArray;
     size_t m_blockNum;

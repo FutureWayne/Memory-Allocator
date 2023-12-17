@@ -5,9 +5,7 @@
 #include <utility>
 #include <cassert>
 
-namespace HeapManagerProxy
-{
-    struct MemoryBlock
+struct MemoryBlock
     {
         void* pBaseAddress;
         size_t BlockSize;
@@ -29,19 +27,20 @@ namespace HeapManagerProxy
 
         void* Alloc(const size_t size, size_t alignment);
         bool Free(void* ptr);
-    
+        void Destroy() const;
+
     private:
         std::pair<MemoryBlock*, MemoryBlock*> findFreeBlock(size_t size);
         
         size_t m_heapSize;
-        void* pHeapBaseAddress;
-        MemoryBlock* pFreeMemoryBlockList; // Linked list of free blocks
-        MemoryBlock* pOutstandingAllocationList; // Linked list of allocated blocks
+        void* m_pHeapBaseAddress;
+        MemoryBlock* m_pFreeMemoryBlockList; // Linked list of free blocks
+        MemoryBlock* m_pOutstandingAllocationList; // Linked list of allocated blocks
     };
 
     HeapManager* CreateHeapManager(void* pHeapMemory, size_t heapSize, unsigned int numDescriptors);
 
-    void Destroy(HeapManager* pHeapManager);
+    void Destroy(const HeapManager* pHeapManager);
 
     inline void* Alloc(HeapManager* pHeapManager, const size_t size)
     {
@@ -91,6 +90,5 @@ namespace HeapManagerProxy
     {
         return pHeapManager->IsAllocated(ptr);
     }
-}
 
 #endif // HEAP_ALLOCATOR_H

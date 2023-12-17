@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <algorithm>
+#include <random>
 #include <vector>
 
 #ifdef _DEBUG
@@ -111,7 +112,7 @@ bool MemorySystem_UnitTest()
 	if (!AllocatedAddresses.empty())
 	{
 		// randomize the addresses
-		std::random_shuffle(AllocatedAddresses.begin(), AllocatedAddresses.end());
+		std::shuffle(AllocatedAddresses.begin(), AllocatedAddresses.end(), std::default_random_engine());
 
 		// return them back to the heap manager
 		while (!AllocatedAddresses.empty())
