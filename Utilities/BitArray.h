@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <algorithm>
 #include <cstdint>
 
 
@@ -54,5 +53,7 @@ private:
 
     bool findBit(bool findSetBit, size_t& o_bitIndex) const;
 };
+
+
 
 
