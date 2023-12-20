@@ -9,6 +9,7 @@ struct MemoryBlock
 {
     void* pBaseAddress;
     size_t BlockSize;
+    size_t AlignmentAdjustment;
     MemoryBlock* pNextBlock;
 };
 
@@ -38,7 +39,7 @@ class HeapManager
         void Destroy() const;
 
     private:
-        std::pair<MemoryBlock*, MemoryBlock*> findFreeBlock(size_t size) const;
+        std::pair<MemoryBlock*, MemoryBlock*> findSuitableBlock(size_t size, size_t alignment) const;
         static MemoryBlock* createNewBlock(void* pBlockAddress, size_t size);
         void shrinkBlock(MemoryBlock* pCurBlock, MemoryBlock* pPrevBlock, size_t size);
 };

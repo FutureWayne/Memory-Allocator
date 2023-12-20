@@ -40,16 +40,21 @@ void HeapManager::Init(void* pHeapBaseAddress, size_t heapSize, unsigned numDesc
 void* HeapManager::Alloc(size_t size, size_t alignment)
 {
 	assert(size > 0);
+
+	// Handle the case where alignment is zero
+	if (alignment == 0) {
+		alignment = 1; // Treat as no alignment requirement
+	}
 	
 	MemoryBlock* pSuitableBlock;
 	MemoryBlock* pPreviousBlock;
-	std::tie(pSuitableBlock, pPreviousBlock) = findFreeBlock(size + MEMORY_BLOCK_OVERHEAD);
+	std::tie(pSuitableBlock, pPreviousBlock) = findSuitableBlock(size + MEMORY_BLOCK_OVERHEAD, alignment);
 	
 	// If no suitable block is found, attempt to de-fragment the heap
 	if (!pSuitableBlock)
 	{
 		Collect();
-		std::tie(pSuitableBlock, pPreviousBlock) = findFreeBlock(size);
+		std::tie(pSuitableBlock, pPreviousBlock) = findSuitableBlock(size + MEMORY_BLOCK_OVERHEAD, alignment);
 	}
 
 	// If a suitable block is still not found after defragmentation, return nullptr
@@ -57,12 +62,20 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	{
 		return nullptr;
 	}
+
+	// Calculate the aligned address for the usable memory
+	const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pSuitableBlock->pBaseAddress);
+	const size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
+
+	// Adjust the size to include the alignment adjustment
+	const size_t totalSize = size + adjustment;
 	
 	// Shrink the suitable block
-	shrinkBlock(pSuitableBlock, pPreviousBlock, size);
+	shrinkBlock(pSuitableBlock, pPreviousBlock, totalSize);
 
 	// Create allocated block
-	MemoryBlock* pNewBlock = createNewBlock(pSuitableBlock, size);
+	MemoryBlock* pNewBlock = createNewBlock(PointerAdd(pSuitableBlock, adjustment), size);
+	pNewBlock->AlignmentAdjustment = adjustment;
 	
 	// track allocation
 	pNewBlock->pNextBlock = m_pOutstandingAllocationList;
@@ -137,13 +150,15 @@ void HeapManager::Collect()
 		while (pCurrentBlock && pCurrentBlock->pNextBlock)
 		{
 			const uintptr_t currentBlockEnd = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress) + pCurrentBlock->BlockSize;
-			const uintptr_t nextBlockStart = reinterpret_cast<uintptr_t>(pCurrentBlock->pNextBlock);
+
+			MemoryBlock* pNextBlock = pCurrentBlock->pNextBlock;
+			const uintptr_t nextBlockStart = reinterpret_cast<uintptr_t>(pNextBlock) - pNextBlock->AlignmentAdjustment;
 
 			// Check if the current block and the next block are adjacent
 			if (currentBlockEnd == nextBlockStart)
 			{
 				// Merge the blocks
-				pCurrentBlock->BlockSize += pCurrentBlock->pNextBlock->BlockSize + MEMORY_BLOCK_OVERHEAD;
+				pCurrentBlock->BlockSize += pCurrentBlock->pNextBlock->BlockSize + MEMORY_BLOCK_OVERHEAD + pCurrentBlock->pNextBlock->AlignmentAdjustment;
 
 				// Remove next block from the free block list
 				const MemoryBlock* pNextBlock = pCurrentBlock->pNextBlock;
@@ -265,19 +280,29 @@ bool HeapManager::IsAllocated(void* ptr) const
 	return false;
 }
 
-std::pair<MemoryBlock*, MemoryBlock*> HeapManager::	findFreeBlock(size_t size) const
+std::pair<MemoryBlock*, MemoryBlock*> HeapManager::findSuitableBlock(size_t size, size_t alignment) const
 {
 	MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
 	MemoryBlock* pPreviousBlock = nullptr;
-	while (pCurrentBlock)
-	{
-		if (pCurrentBlock->BlockSize >= size)
-		{
-			return {pCurrentBlock, pPreviousBlock};
+
+	while (pCurrentBlock) {
+		const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress);
+		const size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
+
+		// Check if the block is large enough to fit the size with alignment
+		const size_t totalSize = size + adjustment;
+		if (pCurrentBlock->BlockSize >= totalSize) {
+			// Check if the aligned address is still within the block
+			const uintptr_t alignedAddress = rawAddress + adjustment;
+			if (alignedAddress + size <= rawAddress + pCurrentBlock->BlockSize) {
+				return {pCurrentBlock, pPreviousBlock};
+			}
 		}
+
 		pPreviousBlock = pCurrentBlock;
 		pCurrentBlock = pCurrentBlock->pNextBlock;
 	}
+
 	return {nullptr, nullptr};
 }
 
@@ -286,6 +311,7 @@ MemoryBlock* HeapManager::createNewBlock(void* pBlockAddress, size_t size)
 	MemoryBlock* newBlock = static_cast<MemoryBlock*>(pBlockAddress);
 	newBlock->pBaseAddress = PointerAdd(pBlockAddress, MEMORY_BLOCK_OVERHEAD);
 	newBlock->BlockSize = size;
+	newBlock->AlignmentAdjustment = 0;
 	return newBlock;
 }
 
