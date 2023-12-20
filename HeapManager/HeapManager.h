@@ -29,6 +29,8 @@ class HeapManager
         bool Contains(void* ptr) const;
         bool IsAllocated(void* ptr) const;
         size_t GetLargestFreeBlockSize() const;
+		size_t GetAllOutstandingBlockSize() const;
+		size_t GetAllFreeBlockSize() const;
     
         void* Alloc(size_t size, size_t alignment);
         bool Free(void* ptr);
@@ -97,6 +99,16 @@ inline bool Contains(HeapManager* pHeapManager, void* ptr)
 inline bool IsAllocated(HeapManager* pHeapManager, void* ptr)
 {
     return pHeapManager->IsAllocated(ptr);
+}
+
+inline size_t GetAllOutstandingBlockSize(HeapManager* pHeapManager)
+{
+	return pHeapManager->GetAllOutstandingBlockSize();
+}
+
+inline size_t GetAllFreeBlockSizes(HeapManager* pHeapManager)
+{
+	return pHeapManager->GetAllFreeBlockSize();
 }
 
 #endif // HEAP_ALLOCATOR_H

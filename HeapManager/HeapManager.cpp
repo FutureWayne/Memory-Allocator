@@ -30,7 +30,7 @@ void HeapManager::Init(void* pHeapBaseAddress, size_t heapSize, unsigned numDesc
 	m_heapSize = heapSize;
 	
 	// Initialize the linked list of free memory blocks
-	MemoryBlock* pFirstMemoryBlock = createNewBlock(PointerAdd(pHeapBaseAddress, HEAP_MANAGER_OVERHEAD), heapSize - HEAP_MANAGER_OVERHEAD);
+	MemoryBlock* pFirstMemoryBlock = createNewBlock(PointerAdd(pHeapBaseAddress, HEAP_MANAGER_OVERHEAD), heapSize - HEAP_MANAGER_OVERHEAD - MEMORY_BLOCK_OVERHEAD);
 	m_pFreeMemoryBlockList = pFirstMemoryBlock;
 
 	// Initialize the linked list of outstanding allocations (empty at the start)
@@ -45,7 +45,7 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	MemoryBlock* pPreviousBlock;
 	std::tie(pSuitableBlock, pPreviousBlock) = findFreeBlock(size + MEMORY_BLOCK_OVERHEAD);
 	
-	// TODO: If no suitable block is found, attempt to de-fragment the heap
+	// If no suitable block is found, attempt to de-fragment the heap
 	if (!pSuitableBlock)
 	{
 		Collect();
@@ -57,14 +57,12 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	{
 		return nullptr;
 	}
-
-	// Store the address of suitable block
-	void* pSuitableBlockAddress = pSuitableBlock;
-
+	
 	// Shrink the suitable block
-	shrinkBlock(pSuitableBlock, pPreviousBlock, size + MEMORY_BLOCK_OVERHEAD);
+	shrinkBlock(pSuitableBlock, pPreviousBlock, size);
 
-	MemoryBlock* pNewBlock = createNewBlock(pSuitableBlockAddress, size);
+	// Create allocated block
+	MemoryBlock* pNewBlock = createNewBlock(pSuitableBlock, size);
 	
 	// track allocation
 	pNewBlock->pNextBlock = m_pOutstandingAllocationList;
@@ -221,6 +219,30 @@ size_t HeapManager::GetLargestFreeBlockSize() const
 	return largestSize;
 }
 
+size_t HeapManager::GetAllOutstandingBlockSize() const
+{
+	size_t totalSize = 0;
+	MemoryBlock* pCurrentBlock = m_pOutstandingAllocationList;
+	while (pCurrentBlock)
+	{
+		totalSize += pCurrentBlock->BlockSize + MEMORY_BLOCK_OVERHEAD;
+		pCurrentBlock = pCurrentBlock->pNextBlock;
+	}
+	return totalSize;
+}
+
+size_t HeapManager::GetAllFreeBlockSize() const
+{
+	size_t totalSize = 0;
+	MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
+	while (pCurrentBlock)
+	{
+		totalSize += pCurrentBlock->BlockSize + MEMORY_BLOCK_OVERHEAD;
+		pCurrentBlock = pCurrentBlock->pNextBlock;
+	}
+	return totalSize;
+}
+
 bool HeapManager::Contains(void* ptr) const
 {
 	uintptr_t heapStart = reinterpret_cast<uintptr_t>(m_pHeapBaseAddress);
@@ -275,16 +297,18 @@ void HeapManager::shrinkBlock(MemoryBlock* pCurBlock, MemoryBlock* pPrevBlock, s
 
 	if (pCurBlock->BlockSize > size)
 	{
-		MemoryBlock* pNewBlock = createNewBlock(PointerAdd(pCurBlock, size), pCurBlock->BlockSize - size);
+		MemoryBlock* pShrunkBlock = nullptr;
+		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock, (size + MEMORY_BLOCK_OVERHEAD)), pCurBlock->BlockSize - size - MEMORY_BLOCK_OVERHEAD);
 
 		if (pPrevBlock)
 		{
-			pPrevBlock->pNextBlock = pNewBlock;
+			pPrevBlock->pNextBlock = pShrunkBlock;
+			pShrunkBlock->pNextBlock = pCurBlock->pNextBlock;
 		}
 		else
 		{
-			pNewBlock->pNextBlock = pCurBlock->pNextBlock;
-			m_pFreeMemoryBlockList = pNewBlock;
+			pShrunkBlock->pNextBlock = pCurBlock->pNextBlock;
+			m_pFreeMemoryBlockList = pShrunkBlock;
 		}
 	}
 	else
