@@ -64,22 +64,17 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	}
 
 	// Calculate the aligned address for the usable memory
-	const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pSuitableBlock->pBaseAddress);
+	const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pSuitableBlock->pBaseAddress) - pSuitableBlock->AlignmentAdjustment;
 	size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
 
 	// Adjust the size to include the alignment adjustment
 	const size_t totalSize = size + adjustment;
-	const size_t suitableBlockAdjustment = pSuitableBlock->AlignmentAdjustment;
 	
 	// Shrink the suitable block
 	shrinkBlock(pSuitableBlock, pPreviousBlock, totalSize);
 
 	// Create allocated block
-	MemoryBlock* pNewBlock = createNewBlock(PointerAdd(pSuitableBlock, adjustment), size);
-	if (suitableBlockAdjustment > 0)
-	{
-		adjustment += suitableBlockAdjustment;
-	}
+	MemoryBlock* pNewBlock = createNewBlock(reinterpret_cast<void*>(rawAddress + adjustment - MEMORY_BLOCK_OVERHEAD), size);
 	pNewBlock->AlignmentAdjustment = adjustment;
 	
 	// track allocation
@@ -292,16 +287,17 @@ std::pair<MemoryBlock*, MemoryBlock*> HeapManager::findSuitableBlock(size_t size
 
 	while (pCurrentBlock)
 	{
-		const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress);
-		const size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
+		const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress) - pCurrentBlock->AlignmentAdjustment;
+		size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
 
 		// Check if the block is large enough to fit the size with alignment
+		// Take the size of the block and the alignment gap into account
 		const size_t totalSize = size + adjustment;
-		if (pCurrentBlock->BlockSize >= totalSize)
+		if (pCurrentBlock->BlockSize + pCurrentBlock->AlignmentAdjustment + MEMORY_BLOCK_OVERHEAD >= totalSize)
 			{
 			// Check if the aligned address is still within the block
 			const uintptr_t alignedAddress = rawAddress + adjustment;
-			if (alignedAddress + size <= rawAddress + pCurrentBlock->BlockSize)
+			if (alignedAddress + size <= rawAddress + pCurrentBlock->BlockSize + pCurrentBlock->AlignmentAdjustment)
 			{
 				return {pCurrentBlock, pPreviousBlock};
 			}
@@ -327,12 +323,22 @@ void HeapManager::shrinkBlock(MemoryBlock* pCurBlock, MemoryBlock* pPrevBlock, s
 {
 	assert(pCurBlock != nullptr);
 	assert(size > 0);
-	assert(pCurBlock->BlockSize>= size);
+	assert(pCurBlock->BlockSize + pCurBlock->AlignmentAdjustment >= size);
 
-	if (pCurBlock->BlockSize > size)
+	// The alignment gap will suffice the allocation, so we don't need to shrink the block, just shrink the alignment gap
+	if (pCurBlock->AlignmentAdjustment >= size)
+	{
+		pCurBlock->AlignmentAdjustment -= size + MEMORY_BLOCK_OVERHEAD;
+		return;
+	}
+
+	// The alignment gap is used up, so we need to shrink the block
+	if (pCurBlock->BlockSize + pCurBlock->AlignmentAdjustment > size)
 	{
 		MemoryBlock* pShrunkBlock = nullptr;
-		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock, (size + MEMORY_BLOCK_OVERHEAD)), pCurBlock->BlockSize - size - MEMORY_BLOCK_OVERHEAD);
+		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock->pBaseAddress, (size - pCurBlock->AlignmentAdjustment)), pCurBlock->BlockSize - (size + MEMORY_BLOCK_OVERHEAD - pCurBlock->AlignmentAdjustment));
+
+		// Since the alignment gap is used up, set the alignment adjustment to zero
 		pShrunkBlock->AlignmentAdjustment = 0;
 
 		if (pPrevBlock)
