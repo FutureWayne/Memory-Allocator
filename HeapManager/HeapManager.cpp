@@ -42,7 +42,8 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	assert(size > 0);
 
 	// Handle the case where alignment is zero
-	if (alignment == 0) {
+	if (alignment == 0)
+	{
 		alignment = 1; // Treat as no alignment requirement
 	}
 	
@@ -62,19 +63,25 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	{
 		return nullptr;
 	}
-
-	// Calculate the aligned address for the usable memory
-	const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pSuitableBlock->pBaseAddress) - pSuitableBlock->AlignmentAdjustment;
-	size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
-
-	// Adjust the size to include the alignment adjustment
-	const size_t totalSize = size + adjustment;
 	
-	// Shrink the suitable block
+	// Calculate the raw address of suitable block before alignment
+	char* rawAddress = static_cast<char*>(pSuitableBlock->pBaseAddress) - pSuitableBlock->AlignmentAdjustment;
+
+	// Calculate the adjustment for new block adjustment
+	const size_t adjustment = (alignment - (reinterpret_cast<uintptr_t>(rawAddress) & (alignment - 1))) % alignment;
+
+	// Adjust the new block size to include the alignment adjustment
+	const size_t totalSize = size + adjustment;
+
+	// Shrink the suitable block by need
 	shrinkBlock(pSuitableBlock, pPreviousBlock, totalSize);
 
+	// Calculate the final address for the allocated block
+	char* finalAddress = rawAddress + adjustment - MEMORY_BLOCK_OVERHEAD;
+
 	// Create allocated block
-	MemoryBlock* pNewBlock = createNewBlock(reinterpret_cast<void*>(rawAddress + adjustment - MEMORY_BLOCK_OVERHEAD), size);
+	MemoryBlock* pNewBlock = createNewBlock(finalAddress, size);
+
 	pNewBlock->AlignmentAdjustment = adjustment;
 	
 	// track allocation
@@ -84,7 +91,7 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	return pNewBlock->pBaseAddress;
 }
 
-bool HeapManager::Free(void* ptr)
+bool HeapManager::Free(const void* ptr)
 {
 		assert(ptr);
 
@@ -138,7 +145,7 @@ bool HeapManager::Free(void* ptr)
 		return false;
 }
 
-void HeapManager::Collect()
+void HeapManager::Collect() const
 {
 	bool bShouldMerge;
 
@@ -161,7 +168,6 @@ void HeapManager::Collect()
 				pCurrentBlock->BlockSize += pCurrentBlock->pNextBlock->BlockSize + MEMORY_BLOCK_OVERHEAD + pCurrentBlock->pNextBlock->AlignmentAdjustment;
 
 				// Remove next block from the free block list
-				const MemoryBlock* pNextBlock = pCurrentBlock->pNextBlock;
 				pCurrentBlock->pNextBlock = pNextBlock->pNextBlock;
 				pNextBlock = nullptr;
 				
@@ -198,15 +204,20 @@ void HeapManager::Destroy() const
 }
 
 void HeapManager::ShowFreeBlocks() const
+{
+	printf("Free Blocks:\n");
+	MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
+	while (pCurrentBlock)
 	{
-		printf("Free Blocks:\n");
-		MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
-		while (pCurrentBlock)
-		{
-			printf("Free block Address: %p, Free block base Address: %p, Size: %zu bytes\n", pCurrentBlock, pCurrentBlock->pBaseAddress, pCurrentBlock->BlockSize);
-			pCurrentBlock = pCurrentBlock->pNextBlock;
-		}
+		printf("Free block Address: %p, Free block base Address: %p, Size: %zu bytes\n", 
+			   static_cast<void*>(pCurrentBlock), 
+			   pCurrentBlock->pBaseAddress, 
+			   pCurrentBlock->BlockSize);
+		pCurrentBlock = pCurrentBlock->pNextBlock;
 	}
+}
+
+
 
 void HeapManager::ShowOutstandingAllocations() const
 {
@@ -214,7 +225,7 @@ void HeapManager::ShowOutstandingAllocations() const
 	MemoryBlock* pCurrentBlock = m_pOutstandingAllocationList;
 	while (pCurrentBlock)
 	{
-		printf("Outstanding block Address: %p, Outstanding block base Address: %p, Size: %zu bytes\n", pCurrentBlock, pCurrentBlock->pBaseAddress, pCurrentBlock->BlockSize);
+		printf("Outstanding block Address: %p, Outstanding block base Address: %p, Size: %zu bytes\n", static_cast<void*>(pCurrentBlock), pCurrentBlock->pBaseAddress, pCurrentBlock->BlockSize);
 		pCurrentBlock = pCurrentBlock->pNextBlock;
 	}
 }
@@ -222,7 +233,7 @@ void HeapManager::ShowOutstandingAllocations() const
 size_t HeapManager::GetLargestFreeBlockSize() const
 {
 	size_t largestSize = 0;
-	MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
+	const MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
 	while (pCurrentBlock)
 	{
 		if (pCurrentBlock->BlockSize > largestSize)
@@ -237,7 +248,7 @@ size_t HeapManager::GetLargestFreeBlockSize() const
 size_t HeapManager::GetAllOutstandingBlockSize() const
 {
 	size_t totalSize = 0;
-	MemoryBlock* pCurrentBlock = m_pOutstandingAllocationList;
+	const MemoryBlock* pCurrentBlock = m_pOutstandingAllocationList;
 	while (pCurrentBlock)
 	{
 		totalSize += pCurrentBlock->BlockSize + MEMORY_BLOCK_OVERHEAD;
@@ -249,7 +260,7 @@ size_t HeapManager::GetAllOutstandingBlockSize() const
 size_t HeapManager::GetAllFreeBlockSize() const
 {
 	size_t totalSize = 0;
-	MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
+	const MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
 	while (pCurrentBlock)
 	{
 		totalSize += pCurrentBlock->BlockSize + MEMORY_BLOCK_OVERHEAD;
@@ -260,15 +271,15 @@ size_t HeapManager::GetAllFreeBlockSize() const
 
 bool HeapManager::Contains(void* ptr) const
 {
-	uintptr_t heapStart = reinterpret_cast<uintptr_t>(m_pHeapBaseAddress);
-	uintptr_t heapEnd = heapStart + m_heapSize;
-	uintptr_t address = reinterpret_cast<uintptr_t>(ptr);
+	const uintptr_t heapStart = reinterpret_cast<uintptr_t>(m_pHeapBaseAddress);
+	const uintptr_t heapEnd = heapStart + m_heapSize;
+	const uintptr_t address = reinterpret_cast<uintptr_t>(ptr);
 	return address >= heapStart && address < heapEnd;
 }
 
-bool HeapManager::IsAllocated(void* ptr) const
+bool HeapManager::IsAllocated(const void* ptr) const
 {
-	MemoryBlock* pCurrentBlock = m_pOutstandingAllocationList;
+	const MemoryBlock* pCurrentBlock = m_pOutstandingAllocationList;
 	while (pCurrentBlock)
 	{
 		if (pCurrentBlock->pBaseAddress == ptr)
@@ -280,15 +291,16 @@ bool HeapManager::IsAllocated(void* ptr) const
 	return false;
 }
 
-std::pair<MemoryBlock*, MemoryBlock*> HeapManager::findSuitableBlock(size_t size, size_t alignment) const
+std::pair<MemoryBlock*, MemoryBlock*> HeapManager::findSuitableBlock(const size_t size, const size_t alignment) const
 {
 	MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
 	MemoryBlock* pPreviousBlock = nullptr;
 
 	while (pCurrentBlock)
 	{
+		// New block will potentially use memory space in alignment gap, use the raw base address to calculate the alignment adjustment
 		const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress) - pCurrentBlock->AlignmentAdjustment;
-		size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
+		const size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
 
 		// Check if the block is large enough to fit the size with alignment
 		// Take the size of the block and the alignment gap into account
@@ -335,8 +347,9 @@ void HeapManager::shrinkBlock(MemoryBlock* pCurBlock, MemoryBlock* pPrevBlock, s
 	// The alignment gap is used up, so we need to shrink the block
 	if (pCurBlock->BlockSize + pCurBlock->AlignmentAdjustment > size)
 	{
-		MemoryBlock* pShrunkBlock = nullptr;
-		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock->pBaseAddress, (size - pCurBlock->AlignmentAdjustment)), pCurBlock->BlockSize - (size + MEMORY_BLOCK_OVERHEAD - pCurBlock->AlignmentAdjustment));
+		MemoryBlock* pShrunkBlock = createNewBlock(
+			PointerAdd(pCurBlock->pBaseAddress, (size - pCurBlock->AlignmentAdjustment)),
+			pCurBlock->BlockSize - (size + MEMORY_BLOCK_OVERHEAD - pCurBlock->AlignmentAdjustment));
 
 		// Since the alignment gap is used up, set the alignment adjustment to zero
 		pShrunkBlock->AlignmentAdjustment = 0;
@@ -352,9 +365,10 @@ void HeapManager::shrinkBlock(MemoryBlock* pCurBlock, MemoryBlock* pPrevBlock, s
 			m_pFreeMemoryBlockList = pShrunkBlock;
 		}
 	}
+
+	// The block is used up, so we need to remove it from the free memory block list
 	else
 	{
-		// Remove the block from the free list
 		if (pPrevBlock)
 		{
 			pPrevBlock->pNextBlock = pCurBlock->pNextBlock;
