@@ -1,6 +1,8 @@
 #include <Windows.h>
 
 #include "MemorySystem.h"
+#include "FixedSizeAllocator/FixedSizeAllocator.h"
+#include "Utilities/BitArray.h"
 
 #include <assert.h>
 #include <algorithm>
@@ -14,6 +16,8 @@
 #endif // _DEBUG
 
 bool MemorySystem_UnitTest();
+bool BitArray_UnitTest();
+bool FixSizeAllocator_UnitTest();
 
 int main(int i_arg, char **)
 {
@@ -31,6 +35,17 @@ int main(int i_arg, char **)
 
 	bool success = MemorySystem_UnitTest();
 	assert(success);
+
+	success = BitArray_UnitTest();
+	assert(success);
+
+	success = FixSizeAllocator_UnitTest();
+	assert(success);
+
+	if (success)
+	{
+		printf("All unit test passed.\n");
+	}
 
 	// Clean up your Memory System (HeapManager and FixedSizeAllocators)
 	DestroyMemorySystem();
@@ -151,5 +166,92 @@ bool MemorySystem_UnitTest()
 	delete[] pNewTest;
 
 	// we succeeded
+	return true;
+}
+
+bool BitArray_UnitTest()
+{
+	size_t numBits = 64; // Example size
+	BitArray* bitArray = CreateBitArray(malloc(sizeof(BitArray) + sizeof(t_BitData) * (numBits / 8)), numBits, true);
+
+	// Test ClearAll and AreAllBitsClear
+	bitArray->ClearAll();
+	assert(bitArray->AreAllBitsClear() == true);
+
+	// Test SetAll and AreAllBitsSet
+	bitArray->SetAll();
+	assert(bitArray->AreAllBitsSet() == true);
+
+	// Test SetBit and IsBitSet
+	bitArray->ClearAll();
+	bitArray->SetBit(5);
+	assert(bitArray->IsBitSet(5) == true);
+
+	// Test ClearBit and IsBitClear
+	bitArray->SetAll();
+	bitArray->ClearBit(5);
+	assert(bitArray->IsBitClear(5) == true);
+
+	// Test FindFirstSetBit
+	size_t firstSetBitIndex;
+	bitArray->ClearAll();
+	bitArray->SetBit(10);
+	assert(bitArray->FindFirstSetBit(firstSetBitIndex) == true && firstSetBitIndex == 10);
+
+	// Test FindFirstClearBit
+	size_t firstClearBitIndex;
+	bitArray->SetAll();
+	bitArray->ClearBit(10);
+	assert(bitArray->FindFirstClearBit(firstClearBitIndex) == true && firstClearBitIndex == 10);
+
+	free(bitArray);
+
+	return true;
+}
+
+bool FixSizeAllocator_UnitTest()
+{
+	// Setup
+	const size_t blockSize = 32; // Example block size
+	const size_t blockNum = 10;  // Number of blocks
+	char heapBase[1024];         // Simulated heap space
+
+	// Create a FixedSizeAllocator instance
+	FixedSizeAllocator* allocator = CreateFixedSizeAllocator(blockSize, blockNum, heapBase);
+	assert(allocator != nullptr);
+
+	// Test allocation
+	void* block1 = allocator->Alloc();
+	assert(block1 != nullptr);
+
+	// Test block is within the expected range
+	assert(block1 >= heapBase && block1 < heapBase + sizeof(heapBase));
+
+	// Test allocation until full
+	void* lastBlock = nullptr;
+	for (size_t i = 1; i < blockNum; ++i) {
+		lastBlock = allocator->Alloc();
+		assert(lastBlock != nullptr);
+	}
+
+	// Test over-allocation (should return nullptr)
+	void* overflowBlock = allocator->Alloc();
+	assert(overflowBlock == nullptr);
+
+	// Test deallocation
+	bool freeResult = allocator->Free(block1);
+	assert(freeResult);
+
+	// Test double free (should return false)
+	freeResult = allocator->Free(block1);
+	assert(!freeResult);
+
+	// Test freeing a block not allocated (should return false)
+	freeResult = allocator->Free(heapBase);
+	assert(!freeResult);
+
+	// Cleanup
+	allocator->Destroy();
+
 	return true;
 }
