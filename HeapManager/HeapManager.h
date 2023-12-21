@@ -57,7 +57,7 @@ inline void* Alloc(HeapManager* pHeapManager, const size_t size)
 {
     assert(pHeapManager != nullptr);
 
-    return pHeapManager->Alloc(size, 0);
+    return pHeapManager->Alloc(size, 1);
 }
 
 inline void* Alloc(HeapManager* pHeapManager, size_t size, size_t alignment)

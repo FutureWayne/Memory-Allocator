@@ -50,7 +50,7 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 	MemoryBlock* pPreviousBlock;
 	std::tie(pSuitableBlock, pPreviousBlock) = findSuitableBlock(size + MEMORY_BLOCK_OVERHEAD, alignment);
 	
-	// If no suitable block is found, attempt to de-fragment the heap
+	//If no suitable block is found, attempt to de-fragment the heap
 	if (!pSuitableBlock)
 	{
 		Collect();
@@ -65,16 +65,21 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 
 	// Calculate the aligned address for the usable memory
 	const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pSuitableBlock->pBaseAddress);
-	const size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
+	size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
 
 	// Adjust the size to include the alignment adjustment
 	const size_t totalSize = size + adjustment;
+	const size_t suitableBlockAdjustment = pSuitableBlock->AlignmentAdjustment;
 	
 	// Shrink the suitable block
 	shrinkBlock(pSuitableBlock, pPreviousBlock, totalSize);
 
 	// Create allocated block
 	MemoryBlock* pNewBlock = createNewBlock(PointerAdd(pSuitableBlock, adjustment), size);
+	if (suitableBlockAdjustment > 0)
+	{
+		adjustment += suitableBlockAdjustment;
+	}
 	pNewBlock->AlignmentAdjustment = adjustment;
 	
 	// track allocation
@@ -85,7 +90,7 @@ void* HeapManager::Alloc(size_t size, size_t alignment)
 }
 
 bool HeapManager::Free(void* ptr)
-	{
+{
 		assert(ptr);
 
 		// Find the block in the outstanding allocation list
@@ -136,7 +141,7 @@ bool HeapManager::Free(void* ptr)
 
 		// Block not found in the outstanding allocation list
 		return false;
-	}
+}
 
 void HeapManager::Collect()
 {
@@ -149,7 +154,7 @@ void HeapManager::Collect()
 
 		while (pCurrentBlock && pCurrentBlock->pNextBlock)
 		{
-			const uintptr_t currentBlockEnd = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress) + pCurrentBlock->BlockSize;
+			const uintptr_t currentBlockEnd = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress) + pCurrentBlock->BlockSize - pCurrentBlock->AlignmentAdjustment;
 
 			MemoryBlock* pNextBlock = pCurrentBlock->pNextBlock;
 			const uintptr_t nextBlockStart = reinterpret_cast<uintptr_t>(pNextBlock) - pNextBlock->AlignmentAdjustment;
@@ -285,16 +290,19 @@ std::pair<MemoryBlock*, MemoryBlock*> HeapManager::findSuitableBlock(size_t size
 	MemoryBlock* pCurrentBlock = m_pFreeMemoryBlockList;
 	MemoryBlock* pPreviousBlock = nullptr;
 
-	while (pCurrentBlock) {
+	while (pCurrentBlock)
+	{
 		const uintptr_t rawAddress = reinterpret_cast<uintptr_t>(pCurrentBlock->pBaseAddress);
 		const size_t adjustment = (alignment - (rawAddress & (alignment - 1))) % alignment;
 
 		// Check if the block is large enough to fit the size with alignment
 		const size_t totalSize = size + adjustment;
-		if (pCurrentBlock->BlockSize >= totalSize) {
+		if (pCurrentBlock->BlockSize >= totalSize)
+			{
 			// Check if the aligned address is still within the block
 			const uintptr_t alignedAddress = rawAddress + adjustment;
-			if (alignedAddress + size <= rawAddress + pCurrentBlock->BlockSize) {
+			if (alignedAddress + size <= rawAddress + pCurrentBlock->BlockSize)
+			{
 				return {pCurrentBlock, pPreviousBlock};
 			}
 		}
@@ -319,12 +327,13 @@ void HeapManager::shrinkBlock(MemoryBlock* pCurBlock, MemoryBlock* pPrevBlock, s
 {
 	assert(pCurBlock != nullptr);
 	assert(size > 0);
-	assert(pCurBlock->BlockSize >= size);
+	assert(pCurBlock->BlockSize + pCurBlock->AlignmentAdjustment >= size);
 
-	if (pCurBlock->BlockSize > size)
+	if (pCurBlock->BlockSize + pCurBlock->AlignmentAdjustment > size)
 	{
 		MemoryBlock* pShrunkBlock = nullptr;
-		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock, (size + MEMORY_BLOCK_OVERHEAD)), pCurBlock->BlockSize - size - MEMORY_BLOCK_OVERHEAD);
+		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock, (size + MEMORY_BLOCK_OVERHEAD - pCurBlock->AlignmentAdjustment)), pCurBlock->BlockSize - size - MEMORY_BLOCK_OVERHEAD + pCurBlock->AlignmentAdjustment);
+		pShrunkBlock->AlignmentAdjustment = 0;
 
 		if (pPrevBlock)
 		{
