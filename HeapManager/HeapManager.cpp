@@ -327,12 +327,12 @@ void HeapManager::shrinkBlock(MemoryBlock* pCurBlock, MemoryBlock* pPrevBlock, s
 {
 	assert(pCurBlock != nullptr);
 	assert(size > 0);
-	assert(pCurBlock->BlockSize + pCurBlock->AlignmentAdjustment >= size);
+	assert(pCurBlock->BlockSize>= size);
 
-	if (pCurBlock->BlockSize + pCurBlock->AlignmentAdjustment > size)
+	if (pCurBlock->BlockSize > size)
 	{
 		MemoryBlock* pShrunkBlock = nullptr;
-		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock, (size + MEMORY_BLOCK_OVERHEAD - pCurBlock->AlignmentAdjustment)), pCurBlock->BlockSize - size - MEMORY_BLOCK_OVERHEAD + pCurBlock->AlignmentAdjustment);
+		pShrunkBlock = createNewBlock(PointerAdd(pCurBlock, (size + MEMORY_BLOCK_OVERHEAD)), pCurBlock->BlockSize - size - MEMORY_BLOCK_OVERHEAD);
 		pShrunkBlock->AlignmentAdjustment = 0;
 
 		if (pPrevBlock)
