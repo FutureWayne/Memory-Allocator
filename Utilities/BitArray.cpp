@@ -1,14 +1,11 @@
 ﻿#include "BitArray.h"
 
-#include <cstring>
 #include <intrin0.inl.h>
 
 BitArray::BitArray() = default;
 
 BitArray::~BitArray()
-{
-    
-}
+= default;
 
 bool BitArray::FindFirstSetBit(size_t& o_firstSetBitIndex) const
 {
@@ -20,23 +17,15 @@ bool BitArray::FindFirstClearBit(size_t& o_firstClearBitIndex) const
     return findBit(false, o_firstClearBitIndex);
 }
 
-void BitArray::ClearAll(void) const
-{
-    for (size_t i = 0; i < m_elementCount; i++)
-    {
-        *FindElementPtr(i) = 0;
-    }
+void BitArray::ClearAll() const {
+    memset(m_pBits, 0, sizeof(t_BitData) * m_elementCount);
 }
 
-void BitArray::SetAll(void) const
-{
-    for (size_t i = 0; i < m_elementCount; i++)
-    {
-        *FindElementPtr(i) = _WIN32 ? ~0UL : ~0ULL;
-    }
+void BitArray::SetAll() const {
+    memset(m_pBits, 0xFF, sizeof(t_BitData) * m_elementCount);
 }
 
-bool BitArray::AreAllBitsClear(void) const 
+bool BitArray::AreAllBitsClear() const 
 {
     for (size_t i = 0; i < m_elementCount; ++i) {
         if (m_pBits[i] != 0) {
@@ -46,7 +35,7 @@ bool BitArray::AreAllBitsClear(void) const
     return true;
 }
 
-bool BitArray::AreAllBitsSet(void) const 
+bool BitArray::AreAllBitsSet() const 
 {
     for (size_t i = 0; i < m_elementCount; ++i) {
         if (m_pBits[i] != ~static_cast<t_BitData>(0)) {
@@ -94,21 +83,7 @@ bool BitArray::operator[](size_t i_bitIndex) const
     return IsBitSet(i_bitIndex);
 }
 
-/**
- * @brief Finds the specified bit in the BitArray object.
- *
- * This method searches for the specified bit in the BitArray object and returns
- * the index of the first occurrence of that bit. It also updates the output parameter
- * o_bitIndex with the found bit's index. If the bit is found, the method returns true,
- * otherwise, it returns false.
- *
- * @param findSetBit Flag indicating whether to find a set bit or a clear bit.
- *                   Pass 'true' to find set bit, 'false' to find clear bit.
- * @param o_bitIndex Output parameter that will hold the index of the found bit.
- *                   Must be passed by reference.
- *
- * @return True if the bit is found, false otherwise.
- */
+
 bool BitArray::findBit(bool findSetBit, size_t& o_bitIndex) const
 {
     size_t elementIndex = 0;
@@ -125,7 +100,7 @@ bool BitArray::findBit(bool findSetBit, size_t& o_bitIndex) const
     t_BitData Bits = findSetBit ? m_pBits[elementIndex] : ~m_pBits[elementIndex];
     unsigned long bitIndex;
 
-#if WIN32
+#if _WIN32
     _BitScanForward(&bitIndex, Bits);
 #else
     _BitScanForward64(&bitIndex, Bits);

@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include <cstdint>
-#include <iostream>
 
 #include "PointerMath.h"
 
@@ -30,13 +29,13 @@ public:
     size_t m_elementCount;
     t_BitData* m_pBits;
 
-    void ClearAll(void) const;
+    void ClearAll() const;
 
-    void SetAll(void) const;
+    void SetAll() const;
 
-    bool AreAllBitsClear(void) const;
+    bool AreAllBitsClear() const;
 
-    bool AreAllBitsSet(void) const;
+    bool AreAllBitsSet() const;
     
     bool IsBitSet(size_t i_bitNumber) const;
 
@@ -55,6 +54,21 @@ public:
     bool operator[](size_t i_bitIndex) const;
 
 private:
+    /**
+     * @brief Finds the specified bit in the BitArray object.
+     *
+     * This method searches for the specified bit in the BitArray object and returns
+     * the index of the first occurrence of that bit. It also updates the output parameter
+     * o_bitIndex with the found bit's index. If the bit is found, the method returns true,
+     * otherwise, it returns false.
+     *
+     * @param findSetBit Flag indicating whether to find a set bit or a clear bit.
+     *                   Pass 'true' to find set bit, 'false' to find clear bit.
+     * @param o_bitIndex Output parameter that will hold the index of the found bit.
+     *                   Must be passed by reference.
+     *
+     * @return True if the bit is found, false otherwise.
+     */
     bool findBit(bool findSetBit, size_t& o_bitIndex) const;
 };
 
@@ -68,15 +82,12 @@ inline BitArray* CreateBitArray(void* baseAddr, size_t i_numBits, bool i_bInitTo
     pBitArray->m_elementCount = (i_numBits + pBitArray->bitsPerElement - 1) / pBitArray->bitsPerElement;
     
     const auto newAddress = PointerAdd(pBitArray, sizeof(BitArray));
-    pBitArray->m_pBits = reinterpret_cast<t_BitData*>(newAddress);
+    pBitArray->m_pBits = static_cast<t_BitData*>(newAddress);
     
     for (size_t i = 0; i < pBitArray->m_elementCount; i++)
     {
-        pBitArray->m_pBits[i] = i_bInitToZero ? 0 : ~0;
+        pBitArray->m_pBits[i] = i_bInitToZero ? 0 : 1;
     }
-    
-
-    t_BitData data = pBitArray->m_pBits[3];
     
     return pBitArray;
 }
