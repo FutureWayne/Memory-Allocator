@@ -2,8 +2,8 @@
 
 FSAInitData g_FixedSizeAllocatorsInitData[] = {
 	{ 16, 100 },
-	{ 32, 100 },
-	{ 96, 100 },
+	{ 32, 200 },
+	{ 96, 400 },
 	{ 256, 100 },
 	{ 1024, 100 },
  };
@@ -11,7 +11,6 @@ FSAInitData g_FixedSizeAllocatorsInitData[] = {
 const unsigned int g_FixedSizeAllocatorsCount = 5;
 HeapManager* g_pHeapManager = nullptr;
 FixedSizeAllocator* g_pFixedSizeAllocators[5] = {nullptr};
-
 
 bool InitializeMemorySystem(void * i_pHeapMemory, size_t i_sizeHeapMemory, unsigned int i_OptionalNumDescriptors)
 {
