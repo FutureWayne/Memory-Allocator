@@ -1,13 +1,12 @@
 ﻿#pragma once
 
 #include "../Utilities/BitArray.h"
-#include "../Utilities/PointerMath.h"
 
 class FixedSizeAllocator
 {
 public:
     FixedSizeAllocator(
-        BitArray bitArray, 
+        const BitArray& bitArray, 
         size_t blockNum = 0, size_t freeBlockNum = 0, 
         size_t blockSize = 0, size_t bitArraySize = 0,
         void* blockBaseAddr = nullptr);
