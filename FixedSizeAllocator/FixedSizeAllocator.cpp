@@ -1,8 +1,14 @@
 ﻿#include "FixedSizeAllocator.h"
 
+#define ENABLE_GUARDBANDS
+
 // Define the guardband size and pattern
+#ifdef ENABLE_GUARDBANDS
 const size_t GUARDBAND_SIZE = 4;
 const unsigned int GUARDBAND_PATTERN = 0xDEADBEEF;
+#else
+const size_t GUARDBAND_SIZE = 0; // No guardband
+#endif
 
 FixedSizeAllocator* CreateFixedSizeAllocator(size_t blockSize, size_t blockNum, void* heapBaseAddr)
 {
@@ -63,9 +69,12 @@ void* FixedSizeAllocator::Alloc()
             m_freeBlockNum--;
 
             char* blockPtr = static_cast<char*>(m_blockBaseAddr) + i * (m_blockSize + 2 * GUARDBAND_SIZE);
+            
+#ifdef ENABLE_GUARDBANDS
             // Set guardband values
             *(reinterpret_cast<unsigned int*>(blockPtr)) = GUARDBAND_PATTERN;
             *(reinterpret_cast<unsigned int*>(blockPtr + GUARDBAND_SIZE + m_blockSize)) = GUARDBAND_PATTERN;
+#endif
 
             return blockPtr + GUARDBAND_SIZE; // Return pointer to the actual block, skipping the front guardband
         }
@@ -84,6 +93,7 @@ bool FixedSizeAllocator::Free(void* ptr)
     char* actualPtr = static_cast<char*>(ptr) - GUARDBAND_SIZE;
     const size_t blockIndex = (actualPtr - static_cast<char*>(m_blockBaseAddr)) / (m_blockSize + 2 * GUARDBAND_SIZE);
 
+#ifdef ENABLE_GUARDBANDS
     // Check guardband integrity
     const unsigned int frontGuard = *(reinterpret_cast<unsigned int*>(actualPtr));
     const unsigned int backGuard = *(reinterpret_cast<unsigned int*>(actualPtr + GUARDBAND_SIZE + m_blockSize));
@@ -91,6 +101,7 @@ bool FixedSizeAllocator::Free(void* ptr)
     {
         return false;
     }
+#endif
 
     m_BitArray.ClearBit(blockIndex);
     m_freeBlockNum++;
